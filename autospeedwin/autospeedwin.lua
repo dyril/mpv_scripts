@@ -1,6 +1,6 @@
 --[[
     See script details on https://github.com/kevinlekiller/mpv_scripts
-    
+
     Valid --script-opts are (they are all optional):
     autospeed-nircmd=false      true/false - Use nircmd to change the refresh rate of your monitor.
     autospeed-speed=false       true/false - Adjust speed of the video?.
@@ -45,10 +45,21 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     https://www.gnu.org/licenses/gpl-2.0.html
 --]]
+
+local function subprocess(t)
+    for k, v in next, t.args do t.args[k] = tostring(v) end
+    local r = mp.command_native({
+        name = "subprocess",
+        playback_only = false,
+        capture_stdout = true,
+        args = t.args,
+    })
+    --print(("[subprocess] [%s] [%s] [%s]"):format(table.concat(t.args, " "), r.status, r.stdout))
+end
+
 local _global = {
     osd_start = mp.get_property_osd("osd-ass-cc/0"),
     osd_end = mp.get_property_osd("osd-ass-cc/1"),
-    utils = require 'mp.utils',
     rateCache = {},
     lastDrr = 0,
     speedCache = {},
@@ -151,7 +162,7 @@ function determineSpeed()
             -- fps = 50fps, drr = 60hz
             -- 60hz / 50fps = 1.2 speed
             -- 50fps * 1.2 speed = 60fps
-            
+
             -- fps = 59.94fps, drr = 60hz
             -- 60hz / 59.94fps  = 1.001001001001001 speed
             -- 59.94fps * 1.001001001001001 = 60fps
@@ -169,7 +180,7 @@ function determineSpeed()
             -- fps = 60fps, drr = 50hz
             -- difference = 50hz / 60fps = 0.833333333333 speed
             -- 60fps * 0.833333333333 speed = 50fps
-            
+
             -- fps = 60fps, drr = 59.94hz
             -- difference = 59.94hz / 60fps = 0.999 speed
             -- 60fps * 0.999 speed = 59.94fps
@@ -253,7 +264,7 @@ function setRate(rate)
     if (_global.options["spause"] > 0 and paused ~= "yes") then
         mp.set_property("pause", "yes")
     end
-    _global.utils.subprocess({
+    subprocess({
         ["cancellable"] = false,
         ["args"] = {
             [1] = _global.options["nircmdc"],
@@ -266,32 +277,28 @@ function setRate(rate)
         }
     })
     if (_global.options["spause"] > 0 and paused ~= "yes") then
-		--os.execute("ping -n " .. _global.options["spause"] .. " localhost > NUL")
-		_global.utils.subprocess({
-			["cancellable"] = false,
-			["args"] = {
-				[1] = "ping",
-				[2] = "-n",
-				[3] = _global.options["spause"],
-				[4] = "localhost",
-				[5] = ">",
-				[6] = "NUL"
-			}
-		})
+        --os.execute("ping -n " .. _global.options["spause"] .. " localhost > NUL")
+        subprocess({
+            ["cancellable"] = false,
+            ["args"] = {
+                [1] = "ping",
+                [2] = "-n",
+                [3] = _global.options["spause"],
+                [4] = "localhost",
+            }
+        })
         mp.set_property("pause", "no")
     end
-	--os.execute("ping -n 2 localhost > NUL")
-	_global.utils.subprocess({
-			["cancellable"] = false,
-			["args"] = {
-				[1] = "ping",
-				[2] = "-n",
-				[3] = "2",
-				[4] = "localhost",
-				[5] = ">",
-				[6] = "NUL"
-			}
-		})
+    --os.execute("ping -n 2 localhost > NUL")
+    subprocess({
+        ["cancellable"] = false,
+        ["args"] = {
+            [1] = "ping",
+            [2] = "-n",
+            [3] = "2",
+            [4] = "localhost",
+        }
+    })
     _global.temp["drr"] = mp.get_property_native("display-fps")
     _global.rateCache[_global.temp["drr"]] = rate
     _global.lastDrr = _global.temp["drr"]
@@ -324,7 +331,7 @@ function start()
     mp.add_key_binding(_global.options["osdkey"], mp.get_script_name(), osdEcho, {repeatable=true})
     if (_global.options["nircmd"] == true and _global.options["exitrate"] > 0) then
         function revertDrr()
-            _global.utils.subprocess({
+            subprocess({
                 ["cancellable"] = false,
                 ["args"] = {
                     [1] = _global.options["nircmdc"],
